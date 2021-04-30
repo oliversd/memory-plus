@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flip_card/flip_card.dart';
+
 import '../../models/card.dart';
 
 final List<Color> colors = [
@@ -21,10 +23,7 @@ class Home extends StatefulWidget {
   _HomeState createState() => _HomeState();
 }
 
-class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
-  AnimationController _animationController;
-  List<Animation> _animation;
-  AnimationStatus _animationStatus = AnimationStatus.dismissed;
+class _HomeState extends State<Home> {
   int _firstCard;
   int _secondCard;
   bool _winner = false;
@@ -32,13 +31,17 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
   Timer _timer;
   int _seconds = 0;
   int _attemps = 0;
+  List<GlobalKey<FlipCardState>> _cardKeys = [];
 
   List<CardModel> _allCards = [];
 
   @override
   void initState() {
-    super.initState();
     setCards();
+    for (var i = 0; i < 12; i++) {
+      _cardKeys.add(GlobalKey<FlipCardState>());
+    }
+    super.initState();
   }
 
   @override
@@ -58,8 +61,6 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     _started = false;
     _seconds = 0;
     _attemps = 0;
-    // _animationController =
-    //     AnimationController(vsync: this, duration: Duration(seconds: 1));
     if (_timer != null) {
       _timer.cancel();
     }
@@ -73,15 +74,12 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
       _allCards.add(CardModel(color: colors[i], state: 0, type: 'Colors'));
     }
 
-    // for (var i = 0; i < 11; i++) {
-    //   _animation.add(Tween(end: 1, begin: 0).animate(_animationController)
-    //     ..addListener(() {
-    //       setState(() {});
-    //     })
-    //     ..addStatusListener((status) {
-    //       _animationStatus = status;
-    //     }));
-    // }
+    for (var i = 0; i < 12; i++) {
+      if (_cardKeys.length > 0 && !_cardKeys[i].currentState.isFront) {
+        _cardKeys[i].currentState.toggleCard();
+      }
+    }
+
     setState(() {});
   }
 
@@ -94,11 +92,6 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     switch (tappedCard.state) {
       case 0:
         _winner = false;
-        if (_animationStatus == AnimationStatus.dismissed) {
-          _animationController.forward();
-        } else {
-          _animationController.reverse();
-        }
         if (!_started) {
           print('START CLOCK >>>>>>');
           _started = true;
@@ -109,6 +102,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
         }
         print('STATE 0 >>>>>>>>>>>');
         tappedCard.state = 1;
+        _cardKeys[index].currentState.toggleCard();
         setState(() {});
         if (_firstCard == null) {
           print('FIRST CARD >>>>>>>>>>>');
@@ -137,8 +131,11 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
             print('NO MATCH >>>>>>');
             _allCards[_firstCard].state = 0;
             tappedCard.state = 0;
+            _cardKeys[index].currentState.toggleCard();
+            _cardKeys[_firstCard].currentState.toggleCard();
             _firstCard = null;
             _secondCard = null;
+
             setState(() {});
           }
         }
@@ -199,10 +196,14 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                       onTap: () {
                         getMatch(index);
                       },
-                      child: Container(
-                          color: _allCards[index].state == 0
-                              ? Colors.grey
-                              : _allCards[index].color,
+                      child: FlipCard(
+                        key: _cardKeys[index],
+                        flipOnTouch: false,
+                        front: Container(
+                          color: Colors.grey,
+                        ),
+                        back: Container(
+                          color: _allCards[index].color,
                           child: SizedBox(
                             height: 20,
                             width: 20,
@@ -211,7 +212,9 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                               '${index + 1}',
                               style: Theme.of(context).textTheme.headline2,
                             )),
-                          )),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
